@@ -1,7 +1,6 @@
 'use strict';
 var express = require('express');
 var router = express.Router();
-var tweetBank = require('../tweetBank');
 
 module.exports = function makeRouterWithSockets (io, client) {
 
@@ -39,21 +38,28 @@ module.exports = function makeRouterWithSockets (io, client) {
     });
   });
 
-  // create a new tweet
+
   router.post('/tweets', function(req, res, next){
+    // test if the user exists -- CODE NOT WORKING
+    client.query('SELECT EXISTS(SELECT 1 FROM users WHERE name=$1)', [req.body.name], function(err, data) {
+      if (err) return next(err);
+      console.log(data.rows);
+    });
+
+    // create a new tweet for a new user -- CODE WORKS
     client.query('INSERT INTO users (name, pictureUrl) VALUES ($1, $2)', [req.body.name, 'http://i.imgur.com/CTil4ns.jpg'], function(err, data) {
       if (err) return next(err);
-      var idQuery = client.query('SELECT id FROM users WHERE name=$1', [req.body.name], function(err, data) {
-        if (err) return next (err);
-        console.log(data.rows);
-      });
+      client.query('SELECT * FROM users WHERE name=$1', [req.body.name], function(err, data) {
+        if (err) return next (err); // pass errors to Express
+        var idQuery = data.rows[0].id;
 
-      // client.query('INSERT INTO tweets (userId, content) VALUES ($1, $2)', [idQuery, req.body.content], function (err, data) {
-      //   if (err) return next(err);
-      //   var newTweet = data.rows;
-      //   io.sockets.emit('new_tweet', newTweet);
-      //   res.redirect('/');
-      // });
+        client.query('INSERT INTO tweets (userId, content) VALUES ($1, $2)', [idQuery, req.body.content], function (err, data) {
+          if (err) return next(err);
+          var newTweet = data.rows;
+          io.sockets.emit('new_tweet', newTweet);
+          res.redirect('/');
+        });
+      });
     });
   });
 
