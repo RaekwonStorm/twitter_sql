@@ -6,9 +6,10 @@ module.exports = function makeRouterWithSockets (io, client) {
 
   // a reusable function
   function respondWithAllTweets (req, res, next){
-      client.query('SELECT * FROM tweets INNER JOIN users ON userid = users.id', function (err, result) {
+      client.query('SELECT tweets.id AS tweetId, users.name, tweets.content FROM tweets INNER JOIN users ON userid = users.id', function (err, result) {
       if (err) return next(err); // pass errors to Express
       var tweets = result.rows;
+      console.log(tweets);
       res.render('index', { title: 'Twitter.js', tweets: tweets, showForm: true });
     });
   }
@@ -23,17 +24,20 @@ module.exports = function makeRouterWithSockets (io, client) {
   // single-user page
   router.get('/users/:username', function(req, res, next){
     client.query('SELECT * FROM tweets INNER JOIN users ON userid = users.id WHERE name=$1',[req.params.username], function (err, result) {
+
       if (err) return next(err); // pass errors to Express
       var tweets = result.rows;
+      console.log(tweets);
       res.render('index', { title: 'Twitter.js', tweets: tweets, showForm: true });
     });
   });
 
   // single-tweet page
-  router.get('/tweets/:id', function(req, res, next){
-    client.query('SELECT * FROM tweets INNER JOIN users ON userid = users.id WHERE tweets.id=$1',[req.params.id], function (err, result) {
+  router.get('/tweets/:tweetId', function(req, res, next){
+    client.query('SELECT tweets.id AS tweetId, users.name, tweets.content  FROM tweets INNER JOIN users ON userid = users.id WHERE tweets.id=$1',[req.params.tweetId], function (err, result) {
       if (err) return next(err); // pass errors to Express
       var tweets = result.rows;
+      console.log(tweets);
       res.render('index', { title: 'Twitter.js', tweets: tweets, showForm: true });
     });
   });
@@ -41,10 +45,10 @@ module.exports = function makeRouterWithSockets (io, client) {
 
   router.post('/tweets', function(req, res, next){
     // test if the user exists -- CODE NOT WORKING
-    client.query('SELECT EXISTS(SELECT 1 FROM users WHERE name=$1)', [req.body.name], function(err, data) {
-      if (err) return next(err);
-      console.log(data.rows);
-    });
+    // client.query('SELECT EXISTS(SELECT 1 FROM users WHERE name=$1)', [req.body.name], function(err, data) {
+    //   if (err) return next(err);
+    //   console.log(data.rows);
+    // });
 
     // create a new tweet for a new user -- CODE WORKS
     client.query('INSERT INTO users (name, pictureUrl) VALUES ($1, $2)', [req.body.name, 'http://i.imgur.com/CTil4ns.jpg'], function(err, data) {
